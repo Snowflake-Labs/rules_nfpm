@@ -1,19 +1,35 @@
-load("@io_bazel_rules_go//go:def.bzl", "nogo")
+load("@bazel_gazelle//:def.bzl", "gazelle")
 
-nogo(
-    name = "rules_nfpm_nogo",
-    vet = True,
-    visibility = ["//visibility:public"],
-)
+#load("@io_bazel_rules_go//go:def.bzl", "nogo")
 
-filegroup(
-    name = "release-files",
-    srcs = [
-        "//go:package-contents",
-        "//go/cmd/nfpmwrapper:package-contents",
-        "//go/internal/cmd/nfpmwrapper:package-contents",
-        "//nfpm:package-contents",
-        "//nfpm/internal:package-contents",
+#nogo(
+#    name = "rules_nfpm_nogo",
+#    vet = True,
+#    visibility = ["//visibility:public"],
+#)
+#
+#filegroup(
+#    name = "release-files",
+#    srcs = [
+#        "//go:package-contents",
+#        "//go/cmd/nfpmwrapper:package-contents",
+#        "//go/internal/cmd/nfpmwrapper:package-contents",
+#        "//nfpm:package-contents",
+#        "//nfpm/internal:package-contents",
+#    ],
+#    visibility = ["//:__subpackages__"],
+#)
+
+# gazelle:prefix github.com/ericnorris/rules_nfpm
+gazelle(name = "gazelle")
+
+gazelle(
+    name = "gazelle-update-repos",
+    args = [
+        "-from_file=go/go.mod",
+        "-to_macro=deps.bzl%go_dependencies",
+        "-prune",
+        "-build_file_proto_mode=disable_global",
     ],
-    visibility = ["//:__subpackages__"],
+    command = "update-repos",
 )
