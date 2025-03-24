@@ -1,4 +1,4 @@
-common --noenable_bzlmod
+
 
 # Show information about failures.
 build --verbose_failures
