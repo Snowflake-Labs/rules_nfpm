@@ -33,8 +33,6 @@ def _inspect_actions_test_impl(ctx):
 
     target_under_test = analysistest.target_under_test(env)
 
-    print(dir(target_under_test))
-
     actions = analysistest.target_actions(env)
 
     asserts.equals(env, 1, len(actions))
