@@ -16,3 +16,19 @@ go_binary(
     embed = [":nfpmwrapper_lib"],
     visibility = ["//visibility:public"],
 )
+
+sh_test(
+    name = "nfmpwrapper_test.accept",
+    size = "small",
+    srcs = [":nfpmwrapper_test"],
+    args = [
+        "-accept",
+    ],
+    tags = ["manual"],
+)
+
+filegroup(
+    name = "package-contents",
+    srcs = glob(["*"]),
+    visibility = ["//:__subpackages__"],
+)

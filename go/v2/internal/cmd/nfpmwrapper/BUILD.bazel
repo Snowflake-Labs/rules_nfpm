@@ -27,3 +27,19 @@ go_test(
         "@com_github_google_go_cmp//cmp/cmpopts",
     ],
 )
+
+sh_test(
+    name = "nfmpwrapper_test.accept",
+    size = "small",
+    srcs = [":nfpmwrapper_test"],
+    args = [
+        "-accept",
+    ],
+    tags = ["manual"],
+)
+
+filegroup(
+    name = "package-contents",
+    srcs = glob(["*"]),
+    visibility = ["//:__subpackages__"],
+)

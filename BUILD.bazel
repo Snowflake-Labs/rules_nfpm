@@ -1,24 +1,23 @@
 load("@bazel_gazelle//:def.bzl", "gazelle")
+load("@io_bazel_rules_go//go:def.bzl", "nogo")
 
-#load("@io_bazel_rules_go//go:def.bzl", "nogo")
+nogo(
+    name = "rules_nfpm_nogo",
+    vet = True,
+    visibility = ["//visibility:public"],
+)
 
-#nogo(
-#    name = "rules_nfpm_nogo",
-#    vet = True,
-#    visibility = ["//visibility:public"],
-#)
-#
-#filegroup(
-#    name = "release-files",
-#    srcs = [
-#        "//go:package-contents",
-#        "//go/cmd/nfpmwrapper:package-contents",
-#        "//go/internal/cmd/nfpmwrapper:package-contents",
-#        "//nfpm:package-contents",
-#        "//nfpm/internal:package-contents",
-#    ],
-#    visibility = ["//:__subpackages__"],
-#)
+filegroup(
+    name = "release-files",
+    srcs = [
+        "//go/v2:package-contents",
+        "//go/v2/cmd/nfpmwrapper:package-contents",
+        "//go/v2/internal/cmd/nfpmwrapper:package-contents",
+        "//nfpm:package-contents",
+        "//nfpm/internal:package-contents",
+    ],
+    visibility = ["//:__subpackages__"],
+)
 
 # gazelle:prefix github.com/ericnorris/rules_nfpm
 gazelle(name = "gazelle")
