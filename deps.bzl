@@ -258,9 +258,12 @@ def go_dependencies():
     go_repository(
         name = "com_github_google_rpmpack",
         build_file_generation = "clean",
-        build_file_proto_mode = "disable_global",
         build_file_name = "BUILD.bazel",
+        build_file_proto_mode = "disable_global",
         importpath = "github.com/google/rpmpack",
+        repo_mapping = {
+            "@rules_go": "@io_bazel_rules_go",
+        },
         sum = "h1:JJBdjSfqSy3mnDT0940ASQFghwcZ4y4cb6ttjAoXqwE=",
         version = "v0.6.1-0.20240329070804-c2247cbb881a",
     )
@@ -295,8 +298,8 @@ def go_dependencies():
     go_repository(
         name = "com_github_goreleaser_nfpm_v2",
         build_file_generation = "clean",
-        build_file_proto_mode = "disable_global",
         build_file_name = "BUILD.bazel",
+        build_file_proto_mode = "disable_global",
         importpath = "github.com/goreleaser/nfpm/v2",
         sum = "h1:IRRsqv5NgiCKUy57HjQgfVBFb44VH8+r1mWeEF8OuA4=",
         version = "v2.41.3",
