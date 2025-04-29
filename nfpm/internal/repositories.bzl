@@ -2,26 +2,25 @@ load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 load("@bazel_tools//tools/build_defs/repo:utils.bzl", "maybe")
 
 def rules_nfpm_internal_dependencies():
-    #    _buildifier_dependencies()
+    _buildifier_dependencies()
     _skylib_dependencies()
+    _stardoc_dependencies()
 
-#    _stardoc_dependencies()
+def _buildifier_dependencies():
+    maybe(
+        http_archive,
+        name = "com_github_bazelbuild_buildtools",
+        strip_prefix = "buildtools-8.0.3",
+        url = "https://github.com/bazelbuild/buildtools/archive/refs/tags/8.0.3.tar.gz",
+    )
 
-#def _buildifier_dependencies():
-#    maybe(
-#        http_archive,
-#        name = "com_github_bazelbuild_buildtools",
-#        strip_prefix = "buildtools-8.0.3",
-#        url = "https://github.com/bazelbuild/buildtools/archive/refs/tags/8.0.3.tar.gz",
-#    )
-#
-#    maybe(
-#        http_archive,
-#        name = "com_google_protobuf",
-#        strip_prefix = "protobuf-30.1",
-#        sha256 = "1451b03faec83aed17cdc71671d1bbdfd72e54086b827f5f6fd02bf7a4041b68",
-#        urls = ["https://github.com/protocolbuffers/protobuf/releases/download/v30.1/protobuf-30.1.tar.gz"],
-#    )
+    maybe(
+        http_archive,
+        name = "com_google_protobuf",
+        strip_prefix = "protobuf-30.1",
+        sha256 = "1451b03faec83aed17cdc71671d1bbdfd72e54086b827f5f6fd02bf7a4041b68",
+        urls = ["https://github.com/protocolbuffers/protobuf/releases/download/v30.1/protobuf-30.1.tar.gz"],
+    )
 
 def _skylib_dependencies():
     maybe(
@@ -34,7 +33,9 @@ def _skylib_dependencies():
         sha256 = "bc283cdfcd526a52c3201279cda4bc298652efa898b10b4db0837dc51652756f",
     )
 
-#def _stardoc_dependencies():
+def _stardoc_dependencies():
+    pass
+
 #    maybe(
 #        http_archive,
 #        name = "io_bazel_stardoc",
@@ -44,13 +45,13 @@ def _skylib_dependencies():
 #            "https://github.com/bazelbuild/stardoc/releases/download/0.8.0/stardoc-0.8.0.tar.gz",
 #        ],
 #    )
-#
+
 #    maybe(
 #        http_archive,
 #        name = "rules_python",
-#        sha256 = "2ef40fdcd797e07f0b6abda446d1d84e2d9570d234fddf8fcd2aa262da852d1c",
-#        strip_prefix = "rules_python-1.2.0",
-#        url = "https://github.com/bazelbuild/rules_python/releases/download/1.2.0/rules_python-1.2.0.tar.gz",
+#        sha256 = "2cc26bbd53854ceb76dd42a834b1002cd4ba7f8df35440cf03482e045affc244",
+#        strip_prefix = "rules_python-1.3.0",
+#        url = "https://github.com/bazel-contrib/rules_python/releases/download/1.3.0/rules_python-1.3.0.tar.gz",
 #    )
 #    http_archive(
 #        name = "rules_proto",
