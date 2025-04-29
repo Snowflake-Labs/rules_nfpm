@@ -52,7 +52,7 @@ def _inspect_actions_test_impl(ctx):
         "--volatile-status",
         "bazel-out/volatile-status.txt",
         "--dep",
-        "{}={}".format(dep_file.owner, dep_file.path),
+        "{}={}".format(str(dep_file.owner).removeprefix("@"), dep_file.path),
         pkg_output.path,
     ]
 
