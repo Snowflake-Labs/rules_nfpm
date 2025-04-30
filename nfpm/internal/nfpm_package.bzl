@@ -4,12 +4,20 @@ def _nfpm_package_impl(ctx):
     if package_file.extension not in ["deb", "rpm"]:
         fail("unknown package format: " + package_file.extension)
 
+
+    expanded_envs = {}
+    for k,v in ctx.attr.envs.items():
+        expanded_envs[k]=ctx.expand_location(v, ctx.attr.deps)
+
     nfpm_args = ctx.actions.args()
 
     nfpm_args.add("--config", ctx.file.config)
     nfpm_args.add("--stable-status", ctx.info_file)
     nfpm_args.add("--volatile-status", ctx.version_file)
+    if ctx.attr.arch != '':
+        nfpm_args.add("--arch", ctx.attr.arch)
     nfpm_args.add_all(ctx.files.deps, before_each = "--dep", map_each = _format_dep)
+    nfpm_args.add_all(expanded_envs.items(), before_each = "--env", map_each = _format_env)
     nfpm_args.add(package_file.path)
 
     nfpm_files = [
@@ -37,7 +45,11 @@ def _format_dep(file):
         file_owner_str = file_owner_str.removeprefix("@")
     return "{}={}".format(file_owner_str, file.path)
 
-nfpm_package = rule(
+def _format_env(kv):
+  key, value = kv
+  return "{}={}".format(key, value)
+
+_nfpm_package = rule(
     _nfpm_package_impl,
     attrs = {
         "config": attr.label(
@@ -48,6 +60,12 @@ nfpm_package = rule(
         "deps": attr.label_list(
             allow_files = True,
             doc = "Dependencies for this target. The output path of each dependency will be available in the `.Dependencies` map in the configuration file template, keyed by the dependency's label.",
+        ),
+        "arch": attr.string(
+            doc = "The architecture: `all`, `amd64`, `386`, `arm5`, `arm6`, `arm7`, `arm64`, `mips`, `mipsle`, `mips64le`, `ppc64le`, `s390`. Refer by `.Arch` during template evaluation."
+        ),
+        "envs": attr.string_dict(
+            doc = "Environment available during configuration template evaluation. Access using `.Envs`."
         ),
         "_nfpm": attr.label(
             default = "//go/v2/cmd/nfpmwrapper",
@@ -75,3 +93,16 @@ nfpm_package(
 See the [example directory](/example/README.md) for a more comprehensive example.
 """,
 )
+
+def nfpm_package(name, config, deps=[], envs={}, arch=None, **kwargs):
+    if arch == None: 
+        # By default pick target bazel architecture.
+        arch = select({
+            "@platforms//cpu:all": "all",
+            "@platforms//cpu:aarch64": "arm64",
+            "@platforms//cpu:x86_64": "amd64",
+            "@platforms//cpu:x86_32": "386",
+        })
+
+    return _nfpm_package(name = name, config = config, deps = deps, arch = arch, envs=envs, **kwargs)
+    

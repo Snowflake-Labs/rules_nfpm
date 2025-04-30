@@ -11,10 +11,19 @@ nfpm_package(
     name = "test.rpm",
     config = "test-config.yaml",
     deps = [":text-files"],
+    arch = "dummy-arch",
+    envs = {
+        "foo":"bar",
+        "testpath": "$(rootpaths :text-files)",
+    }
 )
 
 nfpm_package(
     name = "test.deb",
     config = "test-config.yaml",
     deps = [":text-files"],
+    envs = {
+        "foo":"bar",
+        "testpath": "$(rootpaths :text-files)",
+    }
 )
