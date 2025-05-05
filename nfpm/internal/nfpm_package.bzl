@@ -1,3 +1,5 @@
+load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
+
 def _nfpm_package_impl(ctx):
     package_file = ctx.actions.declare_file(ctx.label.name)
 
@@ -73,28 +75,28 @@ _nfpm_package = rule(
             executable = True,
         ),
     },
-    doc = """
-Generates a package using [NFPM](https://github.com/goreleaser/nfpm/).
-
-The config file is templatized using the `go` [text/template](https://golang.org/pkg/text/template/) library. The dot (`.`) value is a [ConfigTemplateData](https://pkg.go.dev/github.com/ericnorris/rules_nfpm/go/internal/cmd/nfpmwrapper?tab=doc#ConfigTemplateData) struct.
-
-### Example
-
-```starlark
-nfpm_package(
-    name = "helloworld.deb",
-    config = "helloworld.yaml",
-    deps = [
-        "//cmd/helloworld",
-    ],
-)
-```
-
-See the [example directory](/example/README.md) for a more comprehensive example.
-""",
+    doc = "See documentation for nfpm_package.",
 )
 
 def nfpm_package(name, config, deps=[], envs={}, arch=None, **kwargs):
+    """Generates a package using [NFPM](https://github.com/goreleaser/nfpm/).
+
+    The config file is templatized using the `go` [text/template](https://golang.org/pkg/text/template/) library. The dot (`.`) value is a [ConfigTemplateData](https://pkg.go.dev/github.com/ericnorris/rules_nfpm/go/internal/cmd/nfpmwrapper?tab=doc#ConfigTemplateData) struct.
+
+    ### Example
+
+    ```starlark
+    nfpm_package(
+        name = "helloworld.deb",
+        config = "helloworld.yaml",
+        deps = [
+            "//cmd/helloworld",
+        ],
+    )
+    ```
+
+    See the [example directory](/example/README.md) for a more comprehensive example.
+    """
     if arch == None: 
         # By default pick target bazel architecture.
         arch = select({
@@ -106,3 +108,28 @@ def nfpm_package(name, config, deps=[], envs={}, arch=None, **kwargs):
 
     return _nfpm_package(name = name, config = config, deps = deps, arch = arch, envs=envs, **kwargs)
     
+
+def nfpm_packages(name, archs, visibility = [], tags = [], **kwargs):
+    """Generates a packages using [NFPM](https://github.com/goreleaser/nfpm/) for given list of architectures.
+
+    Args:
+      name: name of filegroup owning all architectures
+      archs: map from taget name into @platform
+      visibility: visilibity of the produced targets
+      tags: additional tags for the produced targets
+      **kwargs: other arguments passed to nfpm_package.
+    """
+    name_tmpl = "_" + name
+    nfpm_package(
+        name=name_tmpl,
+        visibility=["//visibility:private"],
+        tags = ["manual"] + tags,
+        **kwargs)
+    srcs = []
+    for (aname, aplatform) in archs.items():
+        platform_transition_filegroup(name = aname, srcs=[name_tmpl], target_platform = aplatform)
+        srcs.append(aname)
+    native.filegroup(
+        name = name,
+        srcs = srcs,
+    )

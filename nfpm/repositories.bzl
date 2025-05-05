@@ -36,3 +36,10 @@ def rules_nfpm_dependencies():
         ],
         sha256 = "7c40b746387cd0c9a4d5bb0b2035abd134b3f7511015710a5ee5e07591008dde",
     )
+    maybe(
+        http_archive,
+        name = "aspect_bazel_lib",
+        sha256 = "2be8a5df0b20b0ed37604b050da01dbf7ad45ad44768c0d478b64779b9f58412",
+        strip_prefix = "bazel-lib-2.15.3",
+        url = "https://github.com/bazel-contrib/bazel-lib/releases/download/v2.15.3/bazel-lib-v2.15.3.tar.gz",
+    )
