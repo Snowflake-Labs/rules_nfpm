@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"io"
 	"io/ioutil"
+	"log"
 	"os"
 	"path/filepath"
 	"strings"
@@ -47,12 +48,15 @@ type ConfigTemplateData struct {
 
 	// Env is a map of envs variables supplied to the bazel rule. This variables
 	// can be used to pass arbitrary values from the bazel rules attributes
-	// to the config. It can be used together with make variables expansion: 
+	// to the config. It can be used together with make variables expansion:
 	// https://bazel.build/reference/be/make-variables#predefined_label_variables
 	Envs map[string]string
 
 	// Architecture of the package. Defaults to 'all'
 	Arch string
+
+	// Directory passed to nfpm to allow referencing files {{ .Workdir }}
+	Workdir string
 }
 
 // Cmd is a struct defining parameters for templating an NFPM config and
@@ -60,6 +64,9 @@ type ConfigTemplateData struct {
 type Cmd struct {
 	// Config is the path to a config file that will be used as a template.
 	Config string `name:"config" type:"existingfile"`
+
+	// Directory passed to nfpm to allow referencing files {{ .Workdir }}
+	Workdir string `name:"workdir" type:"existingdir"`
 
 	// StableStatus and Volatile status are paths to bazel's workspace status
 	// files.
@@ -96,6 +103,8 @@ func (c *Cmd) Run() error {
 	if err != nil {
 		return err
 	}
+
+	log.Println(generatedNFPMConfig)
 
 	nfpmConfig, err := nfpm.Parse(strings.NewReader(generatedNFPMConfig))
 
@@ -185,8 +194,9 @@ func (c *Cmd) generateNFPMConfig() (string, error) {
 		StableStatus:   stableStatus,
 		VolatileStatus: volatileStatus,
 		Dependencies:   dependencies,
-		Envs: 			envs,
-		Arch: 			arch,
+		Envs:           envs,
+		Arch:           arch,
+		Workdir:        c.Workdir,
 	}
 
 	if err := t.Execute(&builder, templateData); err != nil {
@@ -238,7 +248,6 @@ func parseKV(deps []string) (map[string]string, error) {
 func parseDeps(deps []string) (map[string]string, error) {
 	return parseKV(deps)
 }
-
 
 func parseEnvs(envs []string) (map[string]string, error) {
 	return parseKV(envs)

@@ -1,32 +1,53 @@
 load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
+load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory_bin_action")
+
+def _pkg_untar_impl(ctx, outdir, tarfile):
+    info = ctx.toolchains["@aspect_bazel_lib//lib:tar_toolchain_type"]
+
+    args = ctx.actions.args()
+    args.add("-xf", tarfile)
+    args.add("-C", outdir.path)
+    ctx.actions.run(
+        mnemonic = "Untar",
+        executable = info.tarinfo.binary,
+        arguments = [args],
+        inputs = [tarfile],
+        outputs = [outdir],
+    )
 
 def _nfpm_package_impl(ctx):
     package_file = ctx.actions.declare_file(ctx.label.name)
 
+    materialized_dir = ctx.actions.declare_directory("_" + ctx.label.name + "/dep-" + str(0) + "-" + "a")
+
+    _pkg_untar_impl(ctx, materialized_dir, ctx.file.tar)
+
     if package_file.extension not in ["deb", "rpm"]:
         fail("unknown package format: " + package_file.extension)
 
-
     expanded_envs = {}
-    for k,v in ctx.attr.envs.items():
-        expanded_envs[k]=ctx.expand_location(v, ctx.attr.deps)
+    for k, v in ctx.attr.envs.items():
+        expanded_envs[k] = ctx.expand_location(v, ctx.attr.tools)
 
     nfpm_args = ctx.actions.args()
 
     nfpm_args.add("--config", ctx.file.config)
     nfpm_args.add("--stable-status", ctx.info_file)
     nfpm_args.add("--volatile-status", ctx.version_file)
-    if ctx.attr.arch != '':
+
+    if ctx.attr.arch != "":
         nfpm_args.add("--arch", ctx.attr.arch)
-    nfpm_args.add_all(ctx.files.deps, before_each = "--dep", map_each = _format_dep)
+
     nfpm_args.add_all(expanded_envs.items(), before_each = "--env", map_each = _format_env)
+    nfpm_args.add("--workdir", materialized_dir.path)
     nfpm_args.add(package_file.path)
 
     nfpm_files = [
         ctx.file.config,
         ctx.info_file,
         ctx.version_file,
-    ] + ctx.files.deps
+        materialized_dir,
+    ]
 
     ctx.actions.run(
         mnemonic = "NFPMPkg",
@@ -34,6 +55,7 @@ def _nfpm_package_impl(ctx):
         arguments = [nfpm_args],
         inputs = nfpm_files,
         outputs = [package_file],
+        execution_requirements = {"no-sandbox": ""},  # We want to use the untarred files
     )
 
     return [DefaultInfo(files = depset([package_file]))]
@@ -48,8 +70,8 @@ def _format_dep(file):
     return "{}={}".format(file_owner_str, file.path)
 
 def _format_env(kv):
-  key, value = kv
-  return "{}={}".format(key, value)
+    key, value = kv
+    return "{}={}".format(key, value)
 
 _nfpm_package = rule(
     _nfpm_package_impl,
@@ -59,26 +81,38 @@ _nfpm_package = rule(
             allow_single_file = True,
             doc = "NFPM configuration file template.",
         ),
-        "deps": attr.label_list(
+        "tools": attr.label_list(
             allow_files = True,
             doc = "Dependencies for this target. The output path of each dependency will be available in the `.Dependencies` map in the configuration file template, keyed by the dependency's label.",
         ),
+        "tar": attr.label(
+            allow_single_file = True,
+            doc = """Input tar which will be available for package building""",
+        ),
         "arch": attr.string(
-            doc = "The architecture: `all`, `amd64`, `386`, `arm5`, `arm6`, `arm7`, `arm64`, `mips`, `mipsle`, `mips64le`, `ppc64le`, `s390`. Refer by `.Arch` during template evaluation."
+            doc = "The architecture: `all`, `amd64`, `386`, `arm5`, `arm6`, `arm7`, `arm64`, `mips`, `mipsle`, `mips64le`, `ppc64le`, `s390`. Refer by `.Arch` during template evaluation.",
         ),
         "envs": attr.string_dict(
-            doc = "Environment available during configuration template evaluation. Access using `.Envs`."
+            doc = "Environment available during configuration template evaluation. Access using `.Envs`.",
         ),
         "_nfpm": attr.label(
             default = "//go/v2/cmd/nfpmwrapper",
             cfg = "exec",
             executable = True,
         ),
+        "_copy_tool": attr.label(
+            executable = True,
+            cfg = "exec",
+            default = "@aspect_bazel_lib//tools/copy_to_directory",
+        ),
     },
+    toolchains = [
+        "@aspect_bazel_lib//lib:tar_toolchain_type",
+    ],
     doc = "See documentation for nfpm_package.",
 )
 
-def nfpm_package(name, config, deps=[], envs={}, arch=None, **kwargs):
+def nfpm_package(name, config, tar, tools = [], envs = {}, arch = None, **kwargs):
     """Generates a package using [NFPM](https://github.com/goreleaser/nfpm/).
 
     The config file is templatized using the `go` [text/template](https://golang.org/pkg/text/template/) library. The dot (`.`) value is a [ConfigTemplateData](https://pkg.go.dev/github.com/ericnorris/rules_nfpm/go/internal/cmd/nfpmwrapper?tab=doc#ConfigTemplateData) struct.
@@ -97,7 +131,7 @@ def nfpm_package(name, config, deps=[], envs={}, arch=None, **kwargs):
 
     See the [example directory](/example/README.md) for a more comprehensive example.
     """
-    if arch == None: 
+    if arch == None:
         # By default pick target bazel architecture.
         arch = select({
             "@platforms//cpu:all": "all",
@@ -106,10 +140,9 @@ def nfpm_package(name, config, deps=[], envs={}, arch=None, **kwargs):
             "@platforms//cpu:x86_32": "386",
         })
 
-    return _nfpm_package(name = name, config = config, deps = deps, arch = arch, envs=envs, **kwargs)
-    
+    return _nfpm_package(name = name, tar = tar, config = config, tools = tools, arch = arch, envs = envs, **kwargs)
 
-def nfpm_packages(name, archs, visibility = [], tags = [], **kwargs):
+def nfpm_packages(name, archs, format = "rpm", visibility = [], tags = [], **kwargs):
     """Generates a packages using [NFPM](https://github.com/goreleaser/nfpm/) for given list of architectures.
 
     Args:
@@ -119,15 +152,16 @@ def nfpm_packages(name, archs, visibility = [], tags = [], **kwargs):
       tags: additional tags for the produced targets
       **kwargs: other arguments passed to nfpm_package.
     """
-    name_tmpl = "_" + name
+    name_tmpl = "_" + name + "." + format
     nfpm_package(
-        name=name_tmpl,
-        visibility=["//visibility:private"],
+        name = name_tmpl,
+        visibility = ["//visibility:private"],
         tags = ["manual"] + tags,
-        **kwargs)
+        **kwargs
+    )
     srcs = []
     for (aname, aplatform) in archs.items():
-        platform_transition_filegroup(name = aname, srcs=[name_tmpl], target_platform = aplatform)
+        platform_transition_filegroup(name = aname, srcs = [name_tmpl], target_platform = aplatform)
         srcs.append(aname)
     native.filegroup(
         name = name,
