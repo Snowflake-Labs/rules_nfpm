@@ -98,7 +98,7 @@ _nfpm_package = rule(
         "nfpm_binary": attr.label(
             default = "//go/v2/cmd/nfpmwrapper",
             allow_single_file = True,
-            cfg = "host",
+            cfg = "exec",
             executable = True,
             doc = "Custom nfpmwrapper binary. Defaults to building from source.",
         ),
