@@ -49,9 +49,12 @@ def _nfpm_package_impl(ctx):
         materialized_dir,
     ]
 
+    # Use custom nfpm binary if provided, otherwise use default
+    nfpm_executable = ctx.executable.nfpm_binary if ctx.executable.nfpm_binary else ctx.executable._nfpm
+
     ctx.actions.run(
         mnemonic = "NFPMPkg",
-        executable = ctx.executable._nfpm,
+        executable = nfpm_executable,
         arguments = [nfpm_args],
         inputs = nfpm_files,
         outputs = [package_file],
@@ -95,6 +98,12 @@ _nfpm_package = rule(
         "envs": attr.string_dict(
             doc = "Environment available during configuration template evaluation. Access using `.Envs`.",
         ),
+        "nfpm_binary": attr.label(
+            allow_single_file = True,
+            cfg = "exec",
+            executable = True,
+            doc = "Optional custom nfpmwrapper binary. If not specified, the default will be used.",
+        ),
         "_nfpm": attr.label(
             default = "//go/v2/cmd/nfpmwrapper",
             cfg = "exec",
@@ -112,7 +121,7 @@ _nfpm_package = rule(
     doc = "See documentation for nfpm_package.",
 )
 
-def nfpm_package(name, config, tar, tools = [], envs = {}, arch = None, **kwargs):
+def nfpm_package(name, config, tar, tools = [], envs = {}, arch = None, nfpm_binary = None, **kwargs):
     """Generates a package using [NFPM](https://github.com/goreleaser/nfpm/).
 
     The config file is templatized using the `go` [text/template](https://golang.org/pkg/text/template/) library. The dot (`.`) value is a [ConfigTemplateData](https://pkg.go.dev/github.com/ericnorris/rules_nfpm/go/internal/cmd/nfpmwrapper?tab=doc#ConfigTemplateData) struct.
@@ -130,6 +139,17 @@ def nfpm_package(name, config, tar, tools = [], envs = {}, arch = None, **kwargs
     ```
 
     See the [example directory](/example/README.md) for a more comprehensive example.
+
+    Args:
+        name: A unique name for this target.
+        config: NFPM configuration file template.
+        tar: Input tar which will be available for package building.
+        tools: Dependencies for this target.
+        envs: Environment available during configuration template evaluation.
+        arch: The target architecture (e.g., amd64, arm64). If None, defaults based on target platform.
+        nfpm_binary: Optional custom nfpmwrapper binary to use instead of building from source.
+                     If not specified, uses the default from rules_nfpm.
+        **kwargs: Additional arguments passed to the underlying rule.
     """
     if arch == None:
         # By default pick target bazel architecture.
@@ -140,16 +160,19 @@ def nfpm_package(name, config, tar, tools = [], envs = {}, arch = None, **kwargs
             "@platforms//cpu:x86_32": "386",
         })
 
-    return _nfpm_package(name = name, tar = tar, config = config, tools = tools, arch = arch, envs = envs, **kwargs)
+    return _nfpm_package(name = name, tar = tar, config = config, tools = tools, arch = arch, envs = envs, nfpm_binary = nfpm_binary, **kwargs)
 
-def nfpm_packages(name, archs, format = "rpm", visibility = [], tags = [], **kwargs):
+def nfpm_packages(name, archs, format = "rpm", visibility = [], tags = [], nfpm_binary = None, **kwargs):
     """Generates a packages using [NFPM](https://github.com/goreleaser/nfpm/) for given list of architectures.
 
     Args:
       name: name of filegroup owning all architectures
       archs: map from taget name into @platform
+      format: package format (rpm or deb), defaults to rpm
       visibility: visilibity of the produced targets
       tags: additional tags for the produced targets
+      nfpm_binary: Optional custom nfpmwrapper binary to use instead of building from source.
+                   If not specified, uses the default from rules_nfpm.
       **kwargs: other arguments passed to nfpm_package.
     """
     name_tmpl = "_" + name + "." + format
@@ -157,6 +180,7 @@ def nfpm_packages(name, archs, format = "rpm", visibility = [], tags = [], **kwa
         name = name_tmpl,
         visibility = ["//visibility:private"],
         tags = ["manual"] + tags,
+        nfpm_binary = nfpm_binary,
         **kwargs
     )
     srcs = []
