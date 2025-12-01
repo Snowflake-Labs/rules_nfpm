@@ -1,5 +1,4 @@
 load("@aspect_bazel_lib//lib:transitions.bzl", "platform_transition_filegroup")
-load("@aspect_bazel_lib//lib:copy_to_directory.bzl", "copy_to_directory_bin_action")
 
 def _pkg_untar_impl(ctx, outdir, tarfile):
     info = ctx.toolchains["@aspect_bazel_lib//lib:tar_toolchain_type"]
@@ -101,11 +100,6 @@ _nfpm_package = rule(
             cfg = "exec",
             executable = True,
             doc = "Custom nfpmwrapper binary. Defaults to building from source.",
-        ),
-        "_copy_tool": attr.label(
-            executable = True,
-            cfg = "exec",
-            default = "@aspect_bazel_lib//tools/copy_to_directory",
         ),
     },
     toolchains = [
