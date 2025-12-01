@@ -49,12 +49,9 @@ def _nfpm_package_impl(ctx):
         materialized_dir,
     ]
 
-    # Use custom nfpm binary if provided, otherwise use default
-    nfpm_executable = ctx.executable.nfpm_binary if ctx.executable.nfpm_binary else ctx.executable._nfpm
-
     ctx.actions.run(
         mnemonic = "NFPMPkg",
-        executable = nfpm_executable,
+        executable = ctx.executable.nfpm_binary,
         arguments = [nfpm_args],
         inputs = nfpm_files,
         outputs = [package_file],
@@ -99,15 +96,11 @@ _nfpm_package = rule(
             doc = "Environment available during configuration template evaluation. Access using `.Envs`.",
         ),
         "nfpm_binary": attr.label(
-            allow_single_file = True,
-            cfg = "exec",
-            executable = True,
-            doc = "Optional custom nfpmwrapper binary. If not specified, the default will be used.",
-        ),
-        "_nfpm": attr.label(
             default = "//go/v2/cmd/nfpmwrapper",
-            cfg = "exec",
+            allow_single_file = True,
+            cfg = "host",
             executable = True,
+            doc = "Custom nfpmwrapper binary. Defaults to building from source.",
         ),
         "_copy_tool": attr.label(
             executable = True,
